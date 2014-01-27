@@ -1,5 +1,6 @@
 require 'freshdesk'
-# require 'freshdesk/api/codes'
+require 'freshdesk/api/object'
+require 'freshdesk/api/codes'
 
 class Freshdesk
 
@@ -20,25 +21,24 @@ class Freshdesk
         @api_url  ||= "http://#{@company}.freshdesk.com/"
         @username ||= options[:api_key]
         @password ||= 'X'        
-      else
-        raise ArgumentError.new("Missing arguments for #{self.class} constructor.") unless @api_url && @username && @password
       end
+      raise ArgumentError.new("Missing arguments for #{self.class} constructor.") unless @api_url && @username && @password
       @client = ::Freshdesk.new(@api_url, @username, @password)
       @client.response_format = 'json'
     end
 
     def tickets(options = {})
       options[:filter_name] ||= options.delete(:filter) || :all_tickets
-      @tickets = []
+      @tickets_data = []
       page_num = (options[:page]||1).to_i
       begin
         options[:page] = page_num
         found = fetch_json_response(:get_tickets, options)
         puts "* Found #{found.size} tickets... (page #{page_num})"
-        @tickets += found
+        @tickets_data += found
         page_num += 1
       end while found && found.size > 0 && page_num < 100
-      @tickets
+      @tickets = @tickets_data.collect{|data| Api::Object.for(:ticket, data) } # TODO: Create objects.
     end
 
     def companies(options = {})
